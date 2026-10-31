@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Watch Ads - Earn $5 Fast</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+<div class="max-w-md mx-auto bg-white min-h-screen shadow-xl">
+  <!-- TOP BAR -->
+  <div class="bg-green-600 text-white p-4">
+    <h1 class="font-bold text-center text-[18px]">💰 Watch & Earn Daily</h1>
+    <p class="text-center text-[11px] mt-1 opacity-90">1 User = $5 in 14 Days | 5 Mins/Day</p>
+    <div class="bg-white/20 rounded-xl p-3 mt-3">
+      <div class="flex justify-between text-[11px] font-bold">
+        <span>Today: <span id="todayCount">0</span>/18</span>
+        <span>Total: $<span id="totalEarn">0.00</span>/5.00</span>
+      </div>
+      <div class="w-full bg-black/20 h-2 rounded-full mt-2">
+        <div id="bar" class="bg-white h-2 rounded-full transition-all" style="width:0%"></div>
+      </div>
+      <div class="text-[10px] mt-1 text-center opacity-80">Goal: $2.50 min withdrawal via USDT TRC20</div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="p-4">
+    <h2 class="font-bold text-[13px] mb-2">🔥 Your 6 Daily Tasks (3x each)</h2>
+    <div id="taskList" class="space-y-2"></div>
+
+    <div class="mt-5 bg-blue-50 border border-blue-200 rounded-xl p-3 text-[11px] leading-4">
+      <b>How to reach $5:</b><br>
+      • Watch 15 sec timer -> Click WATCH<br>
+      • Same task unlocks after 3 hours<br>
+      • Do 18 clicks daily (5 mins total)<br>
+      • After 6 days = $2.79 = Withdraw via USDT TRC20<br>
+      • After 14 days = $6.51 = Full $5
+    </div>
+  </div>
+</div>
+
+<!-- TIMER POPUP -->
+<div id="modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 flex p-4">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-xs text-center">
+    <h3 id="mName" class="font-bold text-sm">Task</h3>
+    <div class="text-[11px] text-gray-500 mt-1">Stay here, Monetag counts view</div>
+    <div id="timer" class="text-6xl font-black text-green-600 my-6">15</div>
+    <button id="mBtn" disabled class="w-full bg-gray-300 text-white py-3 rounded-xl font-bold text-sm">Please Wait...</button>
+    <button onclick="closeM()" class="mt-3 text-[11px] text-gray-400 underline">Cancel</button>
+  </div>
+</div>
+
+<script>
+const LINKS = [
+  {id:"12156841", name:"Task 1 - Ad Watch", url:"https://uplcm.com/4/12156841", pay:0.025},
+  {id:"12156842", name:"Task 2 - Ad Watch", url:"https://uplcm.com/4/12156842", pay:0.025},
+  {id:"12156796", name:"🎁 Task 3 - BONUS Surprise", url:"https://uplcm.com/4/12156796", pay:0.03},
+  {id:"12156838", name:"Task 4 - Ad Watch", url:"https://uplcm.com/4/12156838", pay:0.025},
+  {id:"12156840", name:"Task 5 - Ad Watch", url:"https://uplcm.com/4/12156840", pay:0.025},
+  {id:"12156839", name:"Task 6 - Ad Watch", url:"https://uplcm.com/4/12156839", pay:0.025}
+];
+
+const KEY="watch_earn_final_6links";
+const LIMIT_PER_LINK=3;
+const TOTAL_LIMIT=18;
+const COOLDOWN=3*60*60*1000; // 3 hours
+const WAIT=15;
+
+function load(){
+  let d=JSON.parse(localStorage.getItem(KEY)||"{}");
+  const today=new Date().toDateString();
+  if(d.date!==today){ d={date:today, clicks:{}, total: d.total||0 }; }
+  if(!d.clicks) d.clicks={};
+  if(!d.total) d.total=0;
+  return d;
+}
+function save(d){ localStorage.setItem(KEY, JSON.stringify(d)); }
+
+let cur=null, inter=null;
+
+function render(){
+  const d=load();
+  let todayCount=0;
+  Object.values(d.clicks).forEach(a=>todayCount+=a.length);
+  document.getElementById('todayCount').innerText=todayCount;
+  document.getElementById('totalEarn').innerText=d.total.toFixed(2);
+  document.getElementById('bar').style.width=Math.min(100, d.total/5*100)+"%";
+  
+  let h="";
+  LINKS.forEach((l,i)=>{
+    const arr=d.clicks[l.id]||[];
+    const cnt=arr.length;
+    const last=cnt?arr[arr.length-1]:0;
+    const left=COOLDOWN-(Date.now()-last);
+    const can=cnt<LIMIT_PER_LINK && left<=0 && todayCount<TOTAL_LIMIT;
+    const bonus=l.id=="12156796";
+    h+=`<div class="flex justify-between items-center border p-3 rounded-xl ${bonus?'bg-yellow-50 border-yellow-400':''}">
+      <div>
+        <div class="font-bold text-[12px]">${l.name}</div>
+        <div class="text-[10px] text-gray-500">$${l.pay} | ${cnt}/${LIMIT_PER_LINK} done ${left>0?`· Wait ${Math.ceil(left/3600000)}h`:''}</div>
+      </div>
+      ${can?`<button onclick="start(${i})" class="bg-green-600 text-white px-5 py-2 rounded-xl text-[11px] font-bold">WATCH</button>`:`<button disabled class="bg-gray-200 text-gray-400 px-5 py-2 rounded-xl text-[11px]">${cnt>=LIMIT_PER_LINK?'DONE':'WAIT'}</button>`}
+    </div>`;
+  });
+  document.getElementById('taskList').innerHTML=h;
+}
+
+function start(i){
+  cur=i;
+  const l=LINKS[i];
+  document.getElementById('mName').innerText=l.name;
+  document.getElementById('modal').classList.remove('hidden');
+  let t=WAIT;
+  document.getElementById('timer').innerText=t;
+  const b=document.getElementById('mBtn');
+  b.disabled=true; b.className="w-full bg-gray-300 text-white py-3 rounded-xl font-bold text-sm"; b.innerText=`Wait ${t}s`;
+  inter=setInterval(()=>{
+    t--; document.getElementById('timer').innerText=t; b.innerText=`Wait ${t}s`;
+    if(t<=0){
+      clearInterval(inter);
+      b.disabled=false;
+      b.className="w-full bg-green-600 text-white py-3 rounded-xl font-bold text-sm animate-pulse";
+      b.innerText="✅ CLICK TO OPEN AD";
+      b.onclick=()=>doClick();
+    }
+  },1000);
+}
+
+function doClick(){
+  const l=LINKS[cur];
+  const d=load();
+  if(!d.clicks[l.id]) d.clicks[l.id]=[];
+  d.clicks[l.id].push(Date.now());
+  d.total+=l.pay;
+  save(d);
+  closeM();
+  window.open(l.url, '_blank');
+  render();
+}
+
+function closeM(){ document.getElementById('modal').classList.add('hidden'); clearInterval(inter); cur=null; }
+
+render();
+setInterval(render, 60000);
+</script>
+</body>
+</html>
